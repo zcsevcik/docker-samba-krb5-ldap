@@ -1,14 +1,20 @@
-FROM debian:stretch
-MAINTAINER David Personette <dperson@gmail.com>
+FROM debian:stretch-slim
+LABEL maintainer "zcsevcik@gmail.com"
 
 # Install samba
 RUN export DEBIAN_FRONTEND='noninteractive' && \
     apt-get update -qq && \
     apt-get install -qqy --no-install-recommends procps samba samba-vfs-modules\
+                heimdal-clients \
                 $(apt-get -s dist-upgrade|awk '/^Inst.*ecurity/ {print $2}') &&\
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* && \
     useradd -c 'Samba User' -d /tmp -M -r smbuser && \
+    mkdir -p /var/run/nslcd && \
     sed -i 's|^\(   log file = \).*|\1/dev/stdout|' /etc/samba/smb.conf && \
     sed -i 's|^\(   unix password sync = \).*|\1no|' /etc/samba/smb.conf && \
+    sed -i 's|^\(   passwd program = \).*|\1/usr/bin/kpasswd %u|' \
+        /etc/samba/smb.conf && \
     sed -i '/Share Definitions/,$d' /etc/samba/smb.conf && \
     echo '   security = user' >>/etc/samba/smb.conf && \
     echo '   create mask = 0664' >>/etc/samba/smb.conf && \
@@ -28,9 +34,11 @@ RUN export DEBIAN_FRONTEND='noninteractive' && \
     echo '   recycle:keeptree = yes' >>/etc/samba/smb.conf && \
     echo '   recycle:versions = yes' >>/etc/samba/smb.conf && \
     echo '   min protocol = SMB2' >>/etc/samba/smb.conf && \
-    echo '' >>/etc/samba/smb.conf && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
+    echo '   kerberos method = secrets and keytab' >>/etc/samba/smb.conf && \
+    echo '   dedicated keytab file = /etc/samba/krb5.keytab' \
+        >>/etc/samba/smb.conf && \
+    echo '' >>/etc/samba/smb.conf
+
 COPY samba.sh /usr/bin/
 
 VOLUME ["/etc/samba"]
