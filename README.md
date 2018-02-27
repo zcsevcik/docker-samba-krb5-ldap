@@ -1,3 +1,6 @@
+[![Docker Build Status](https://img.shields.io/docker/build/zcsevcik/samba-krb5-ldap.svg)](https://hub.docker.com/r/zcsevcik/samba-krb5-ldap/)
+
+
 [![logo](https://raw.githubusercontent.com/dperson/samba/master/logo.jpg)](https://www.samba.org)
 
 # Samba
