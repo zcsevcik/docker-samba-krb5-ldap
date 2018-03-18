@@ -35,13 +35,16 @@ OR set local storage:
         -h          This help
         -c "<from:to>" setup character mapping for file/directory names
                     required arg: "<from:to>" character mappings separated by ','
+        -g "<parameter>" Provide global option for smb.conf
+                    required arg: "<parameter>" - IE: -g "log level = 2"
         -i "<path>" Import smbpassword
                     required arg: "<path>" - full file path in container
         -n          Start the 'nmbd' daemon to advertise the shares
         -p          Set ownership and permissions on the shares
         -r          Disable recycle bin for shares
-        -S          Disable SMB2 minimun version
-        -s "<name;/path>[;browse;readonly;guest;users;admins;wl]" Config a share
+        -S          Disable SMB2 minimum version
+        -s "<name;/path>[;browse;readonly;guest;users;admins;writelist;comment]"
+                    Configure a share
                     required arg: "<name>;</path>"
                     <name> is how it's called for clients
                     <path> path to share
@@ -52,8 +55,7 @@ OR set local storage:
                     [users] allowed default:'all' or list of allowed users
                     [admins] allowed default:'none' or list of admin users
                     [writelist] list of users that can write to a RO share
-        -t ""       Configure timezone
-                    possible arg: "[timezone]" - zoneinfo timezone for container
+                    [comment] description of share
         -u "<username;password>[;ID;group]"       Add a user
                     required arg: "<username>;<passwd>"
                     <username> for user
@@ -63,15 +65,23 @@ OR set local storage:
         -w "<workgroup>"       Configure the workgroup (domain) samba should use
                     required arg: "<workgroup>"
                     <workgroup> for samba
+        -W          Allow access wide symbolic links
 
     The 'command' (if provided and valid) will be run instead of samba
 
 ENVIRONMENT VARIABLES (only available with `docker run`)
 
  * `CHARMAP` - As above, configure character mapping
+ * `GLOBAL` - As above, configure a global option
+ * `IMPORT` - As above, import a smbpassword file
  * `NMBD` - As above, enable nmbd
- * `SMB` - As above, disabel SMB2 minimun version
- * `TZ` - As above, set a zoneinfo timezone, IE `EST5EDT`
+ * `PERMISSIONS` - As above, set file permissions on all shares
+ * `RECYCLE` - As above, disable recycle bin
+ * `SHARE` - As above, setup a share
+ * `SMB` - As above, disable SMB2 minimum version
+ * `TZ` - Set a timezone, IE `EST5EDT`
+ * `USER` - As above, setup a user
+ * `WIDELINKS` - As above, allow access wide symbolic links
  * `WORKGROUP` - As above, set workgroup
  * `USERID` - Set the UID for the samba server
  * `GROUPID` - Set the GID for the samba server
@@ -82,21 +92,11 @@ will also want to expose port 137 and 138 with `-p 137:137/udp -p 138:138/udp`.
 ## Examples
 
 Any of the commands can be run at creation with `docker run` or later with
-`docker exec -it samba.sh` (as of version 1.3 of docker).
+`docker exec -it samba samba.sh` (as of version 1.3 of docker).
 
 ### Setting the Timezone
 
-    sudo docker run -it -p 139:139 -p 445:445 -d dperson/samba -t EST5EDT
-
-OR using `environment variables`
-
     sudo docker run -it -e TZ=EST5EDT -p 139:139 -p 445:445 -d dperson/samba
-
-Will get you the same settings as
-
-    sudo docker run -it --name samba -p 139:139 -p 445:445 -d dperson/samba
-    sudo docker exec -it samba samba.sh -t EST5EDT ls -AlF /etc/localtime
-    sudo docker restart samba
 
 ### Start an instance creating users and shares:
 

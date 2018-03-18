@@ -1,48 +1,54 @@
-FROM debian:stretch-slim
+FROM alpine
 LABEL maintainer "zcsevcik@gmail.com"
 
 # Install samba
-RUN export DEBIAN_FRONTEND='noninteractive' && \
-    apt-get update -qq && \
-    apt-get install -qqy --no-install-recommends procps samba samba-vfs-modules\
-                heimdal-clients \
-                $(apt-get -s dist-upgrade|awk '/^Inst.*ecurity/ {print $2}') &&\
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* && \
-    useradd -c 'Samba User' -d /tmp -M -r smbuser && \
-    mkdir -p /var/run/nslcd && \
-    sed -i 's|^\(   log file = \).*|\1/dev/stdout|' /etc/samba/smb.conf && \
-    sed -i 's|^\(   unix password sync = \).*|\1no|' /etc/samba/smb.conf && \
-    sed -i 's|^\(   passwd program = \).*|\1/usr/bin/kpasswd %u|' \
-        /etc/samba/smb.conf && \
-    sed -i '/Share Definitions/,$d' /etc/samba/smb.conf && \
-    echo '   security = user' >>/etc/samba/smb.conf && \
-    echo '   create mask = 0664' >>/etc/samba/smb.conf && \
-    echo '   force create mode = 0664' >>/etc/samba/smb.conf && \
-    echo '   directory mask = 0775' >>/etc/samba/smb.conf && \
-    echo '   force directory mode = 0775' >>/etc/samba/smb.conf && \
-    echo '   force user = smbuser' >>/etc/samba/smb.conf && \
-    echo '   force group = users' >>/etc/samba/smb.conf && \
-    echo '   follow symlinks = yes' >>/etc/samba/smb.conf && \
-    echo '   load printers = no' >>/etc/samba/smb.conf && \
-    echo '   printing = bsd' >>/etc/samba/smb.conf && \
-    echo '   printcap name = /dev/null' >>/etc/samba/smb.conf && \
-    echo '   disable spoolss = yes' >>/etc/samba/smb.conf && \
-    echo '   socket options = TCP_NODELAY' >>/etc/samba/smb.conf && \
-    echo '   strict locking = no' >>/etc/samba/smb.conf && \
-    echo '   vfs objects = recycle' >>/etc/samba/smb.conf && \
-    echo '   recycle:keeptree = yes' >>/etc/samba/smb.conf && \
-    echo '   recycle:versions = yes' >>/etc/samba/smb.conf && \
-    echo '   min protocol = SMB2' >>/etc/samba/smb.conf && \
-    echo '   kerberos method = secrets and keytab' >>/etc/samba/smb.conf && \
-    echo '   dedicated keytab file = /etc/samba/krb5.keytab' \
-        >>/etc/samba/smb.conf && \
-    echo '' >>/etc/samba/smb.conf
+RUN apk --no-cache --no-progress upgrade && \
+    apk --no-cache --no-progress add bash samba shadow heimdal nss-pam-ldapd && \
+    adduser -D -G users -H -S -g 'Samba User' -h /tmp smbuser && \
+    file="/etc/samba/smb.conf" && \
+    sed -i 's|^;* *\(log file = \).*|   \1/dev/stdout|' $file && \
+    sed -i 's|^;* *\(load printers = \).*|   \1no|' $file && \
+    sed -i 's|^;* *\(printcap name = \).*|   \1/dev/null|' $file && \
+    sed -i 's|^;* *\(printing = \).*|   \1bsd|' $file && \
+    sed -i 's|^;* *\(unix password sync = \).*|   \1no|' $file && \
+    sed -i 's|^;* *\(preserve case = \).*|   \1yes|' $file && \
+    sed -i 's|^;* *\(short preserve case = \).*|   \1yes|' $file && \
+    sed -i 's|^;* *\(default case = \).*|   \1lower|' $file && \
+    sed -i 's|^;*.*\(passwd program = \).*|   \1/usr/bin/kpasswd %u|' $file && \
+    sed -i '/Share Definitions/,$d' $file && \
+    echo '   pam password change = yes' >>$file && \
+    echo '   map to guest = bad user' >>$file && \
+    echo '   usershare allow guests = yes' >>$file && \
+    echo '   create mask = 0664' >>$file && \
+    echo '   force create mode = 0664' >>$file && \
+    echo '   directory mask = 0775' >>$file && \
+    echo '   force directory mode = 0775' >>$file && \
+    echo '   force user = smbuser' >>$file && \
+    echo '   force group = users' >>$file && \
+    echo '   follow symlinks = yes' >>$file && \
+    echo '   load printers = no' >>$file && \
+    echo '   printing = bsd' >>$file && \
+    echo '   printcap name = /dev/null' >>$file && \
+    echo '   disable spoolss = yes' >>$file && \
+    echo '   socket options = TCP_NODELAY' >>$file && \
+    echo '   strict locking = no' >>$file && \
+    echo '   vfs objects = recycle' >>$file && \
+    echo '   recycle:keeptree = yes' >>$file && \
+    echo '   recycle:versions = yes' >>$file && \
+    echo '   min protocol = SMB2' >>$file && \
+    echo '   kerberos method = secrets and keytab' >>$file && \
+    echo '   dedicated keytab file = /etc/samba/krb5.keytab' >>$file && \
+    echo '' >>$file && \
+    rm -rf /tmp/*
+
 
 COPY samba.sh /usr/bin/
 
-VOLUME ["/etc/samba"]
-
 EXPOSE 137/udp 138/udp 139 445
+
+HEALTHCHECK --interval=60s --timeout=15s \
+             CMD smbclient -L '\\localhost\' -U 'guest%' -m SMB3
+
+VOLUME ["/etc/samba"]
 
 ENTRYPOINT ["samba.sh"]
